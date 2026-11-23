@@ -1,0 +1,527 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="description" content="Independent prototype: partner activation and conversion operations for a tokenization GM, built from Alpaca's public ITN guides with synthetic data.">
+<title>ITN Partner Desk</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: an operations desk. Sticky header with tabs, summary first, detail panels below; partner drill-down opens beside the list on wide screens, under it on phones. */
+/* Single bright theme by choice: white work surface, near-black app bar, one yellow accent used as fill and underline (never as text on white). */
+:root{
+  --bg:#F7F6F3; --surface:#FFFFFF; --sunk:#F1EFEA; --line:#E2DED7;
+  --fg:#0A0908; --muted:#5E5954;
+  --accent:#FCD72B; --accent-soft:#FFF5C7; --on-accent:#0A0908;
+  --bar:#FFFFFF; --bar-fg:#0A0908; --bar-muted:#5E5954;
+  --ok:#1E7A4F; --ok-soft:#E3F3EA; --warn:#B4560A; --warn-soft:#FCEBD9; --crit:#B4232F; --crit-soft:#FBE5E7;
+  --sans:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,"SFMono-Regular",Menlo,monospace;
+  --r:4px; color-scheme:light;
+}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--fg);font-family:var(--sans);font-size:14px;line-height:1.5;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:0 48px}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--surface)}
+.wrap{max-width:1180px;margin:0 auto}
+header{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--surface);border-bottom:1px solid var(--line);
+  margin-left:calc(-1 * max(16px,env(safe-area-inset-left,0px)));margin-right:calc(-1 * max(16px,env(safe-area-inset-right,0px)));
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.hrow{max-width:1180px;margin:0 auto;display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;gap:4px 16px;padding-top:14px}
+h1{font-size:19px;margin:0;letter-spacing:-.01em;text-wrap:balance}
+.sub{color:var(--muted);font-size:12.5px}
+nav{max-width:1180px;margin:0 auto;display:flex;gap:2px;overflow-x:auto;padding-top:8px}
+nav a{color:var(--muted);text-decoration:none;padding:8px 12px;border-bottom:2px solid transparent;white-space:nowrap;font-weight:500}
+nav a[aria-current="page"]{color:var(--fg);border-bottom-color:var(--accent)}
+nav a:focus-visible,button:focus-visible,.row:focus-visible,select:focus-visible,input:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.note{margin:16px 0;padding:10px 12px;border:1px dashed var(--line);border-radius:var(--r);color:var(--muted);font-size:12.5px;background:var(--surface)}
+.note b{color:var(--fg)}
+h2{font-size:15px;margin:22px 0 10px;letter-spacing:.01em}
+h3{font-size:13px;margin:0 0 8px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);font-weight:600}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px}
+.kpi{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:12px}
+.kpi .v{font-size:22px;font-weight:600;font-variant-numeric:tabular-nums}
+.kpi .l{color:var(--muted);font-size:12px}
+.kpi .d{font-size:11.5px;margin-top:2px;color:var(--muted)}
+.grid2{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);gap:16px;align-items:start}
+@media (max-width:860px){.grid2{grid-template-columns:minmax(0,1fr)}}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:14px;min-width:0}
+ul.clean{margin:0;padding-left:18px} ul.clean li{margin:4px 0}
+.pill{display:inline-block;font-size:11.5px;font-weight:600;padding:1px 8px;border-radius:999px;white-space:nowrap}
+.p-ok{background:var(--ok-soft);color:var(--ok)} .p-warn{background:var(--warn-soft);color:var(--warn)} .p-crit{background:var(--crit-soft);color:var(--crit)} .p-n{background:var(--sunk);color:var(--muted)}
+.mono{font-family:var(--mono);font-size:12.5px}
+.tablewrap{overflow-x:auto;border:1px solid var(--line);border-radius:var(--r);background:var(--surface)}
+table{border-collapse:collapse;width:100%;font-variant-numeric:tabular-nums}
+th,td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--line);vertical-align:top;white-space:nowrap}
+th{font-size:11.5px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);font-weight:600;background:var(--sunk)}
+tr:last-child td{border-bottom:0}
+td.wrap{white-space:normal;min-width:200px}
+.row{cursor:pointer} .row:hover td{background:var(--sunk)} .row[aria-selected="true"] td{background:var(--accent-soft)}
+.funnel{display:flex;flex-direction:column;gap:6px}
+.fstep{display:grid;grid-template-columns:minmax(120px,190px) 1fr 34px;gap:10px;align-items:center;font-size:13px}
+.fbar{height:18px;background:var(--sunk);border-radius:4px;overflow:hidden}
+.fbar span{display:block;height:100%;background:var(--accent)}
+.fstep .n{font-variant-numeric:tabular-nums;text-align:right;font-weight:600}
+.pcards{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:10px}
+.pcard{text-align:left;background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:12px;cursor:pointer;font:inherit;color:inherit}
+.pcard[aria-pressed="true"]{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent)}
+.pcard .t{font-weight:600} .pcard .pill{align-self:flex-start} .pcard .s{color:var(--muted);font-size:12.5px}
+.stagebar{display:flex;gap:3px;margin:8px 0 6px}
+.stagebar i{flex:1;height:5px;border-radius:2px;background:var(--line)} .stagebar i.on{background:var(--accent)} .stagebar i.blk{background:var(--crit)}
+.five{display:grid;gap:8px;margin:0;padding:0;list-style:none}
+.five li{display:grid;grid-template-columns:150px 1fr;gap:10px;padding:8px 0;border-bottom:1px solid var(--line)}
+.five li:last-child{border-bottom:0}
+.five .q{color:var(--muted);font-size:12.5px}
+@media (max-width:520px){.five li{grid-template-columns:1fr;gap:2px}}
+.check{list-style:none;margin:0;padding:0} .check li{display:grid;grid-template-columns:22px 1fr auto;gap:8px;padding:6px 0;border-bottom:1px solid var(--line);align-items:start}
+.check li:last-child{border-bottom:0}
+.dot{width:14px;height:14px;border-radius:50%;margin-top:3px;border:2px solid var(--line)}
+.dot.done{background:var(--ok);border-color:var(--ok)} .dot.blocked{background:var(--crit);border-color:var(--crit)} .dot.open{border-color:var(--warn)}
+.owner{font-size:11.5px;color:var(--muted);white-space:nowrap}
+.filters{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px;align-items:center}
+select,input[type=number]{font:inherit;color:var(--fg);background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:5px 8px}
+label.f{display:flex;flex-direction:column;gap:3px;font-size:12px;color:var(--muted)}
+.calc{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px;margin-bottom:12px}
+.callout{border-left:3px solid var(--accent);padding:6px 0 6px 12px;margin:8px 0}
+.faq details{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:10px 14px;margin-bottom:8px}
+.faq summary{cursor:pointer;font-weight:600}
+.faq p,.faq ol{margin:8px 0 0;max-width:72ch}
+code{font-family:var(--mono);font-size:12.5px;background:var(--sunk);padding:0 4px;border-radius:4px}
+.muted{color:var(--muted)}
+.kpis{grid-template-columns:repeat(5,minmax(0,1fr))}
+@media (max-width:900px){.kpis{grid-template-columns:repeat(2,minmax(0,1fr))}.kpis .kpi:last-child{grid-column:1/-1}}
+.decs{display:grid;gap:10px}
+.dec{background:var(--surface);border:1px solid var(--line);border-left:3px solid var(--warn);border-radius:var(--r);padding:12px 14px}
+.dec .qn{font-weight:600}
+.dec .rec{margin-top:6px}
+.dec .meta{display:flex;flex-wrap:wrap;gap:6px 16px;margin-top:6px;font-size:12.5px;color:var(--muted)}
+.trail{list-style:none;margin:6px 0 0;padding:0 0 0 6px;border-left:2px solid var(--line)}
+.trail li{position:relative;padding:3px 0 7px 14px;font-size:13px}
+.trail li::before{content:"";position:absolute;left:-13px;top:7px;width:10px;height:10px;border-radius:50%;background:var(--ok);box-sizing:border-box}
+.trail li.out::before{background:var(--surface);border:2px solid var(--warn)}
+.trail li.bad::before{background:var(--crit)}
+.trail .ts{font-family:var(--mono);font-size:11.5px;color:var(--muted);margin-right:6px}
+.tag{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:var(--muted)}
+a{color:var(--accent);text-underline-offset:2px}
+footer{margin-top:28px;color:var(--muted);font-size:12px}
+.sr{position:absolute;left:-9999px}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+
+/* Bright-theme overrides */
+body::before{background:var(--bar)}
+header{background:var(--bar);border-bottom:1px solid var(--line)}
+header h1{color:var(--bar-fg)} header .sub{color:var(--bar-muted)}
+nav a{color:var(--bar-muted)} nav a:hover{color:var(--bar-fg)}
+nav a[aria-current="page"]{color:var(--bar-fg);border-bottom:3px solid var(--accent)}
+nav a:focus-visible{outline:2px solid var(--fg)}
+button:focus-visible,.row:focus-visible,select:focus-visible,input:focus-visible,a:focus-visible{outline:2px solid var(--fg);outline-offset:2px}
+a{color:var(--fg);text-decoration-color:var(--accent);text-decoration-thickness:2px;text-underline-offset:3px}
+.note{border:0;border-bottom:1px solid var(--line);border-radius:0;background:transparent;padding:12px 0;margin:4px 0 8px}
+h2{font-size:16px;font-weight:700;margin:24px 0 10px}
+.kpis{gap:0;border:1px solid var(--line);border-radius:var(--r);background:var(--surface);overflow:hidden}
+.kpi{border:0;border-right:1px solid var(--line);border-radius:0;padding:14px 16px}
+.kpi:last-child{border-right:0}
+.kpi .v{font-family:var(--mono);font-size:24px;font-weight:500;letter-spacing:-.02em}
+@media (max-width:900px){.kpi{border-right:0;border-bottom:1px solid var(--line)}.kpi:nth-child(odd):not(:last-child){border-right:1px solid var(--line)}.kpi:last-child{border-bottom:0}}
+.dec{border-left:4px solid var(--accent)}
+.pcard[aria-pressed="true"]{border-color:var(--fg);box-shadow:inset 0 -3px 0 var(--accent)}
+.fbar{border-radius:2px}
+.callout{border-left-width:4px}
+th{background:var(--sunk);color:var(--muted)}
+.row[aria-selected="true"] td{background:var(--accent-soft)}
+.row[aria-selected="true"] td:first-child{box-shadow:inset 3px 0 0 var(--accent)}
+select,input[type=number]{border-radius:var(--r)}
+</style>
+<style>html,body{margin:0} [hidden]{display:none!important} img{max-width:100%}</style>
+</head>
+<body>
+
+
+<header>
+  <div class="hrow">
+    <div>
+      <h1>ITN Partner Desk</h1>
+      <div class="sub">Partner activation and conversion operations for a tokenization GM · prototype by Jeevan Lal Mourya</div>
+    </div>
+    <div class="sub mono" id="asof"></div>
+  </div>
+  <nav aria-label="Sections">
+    <a href="#briefing">Weekly brief</a>
+    <a href="#pipeline">Partner pipeline</a>
+    <a href="#queue">Conversion queue</a>
+    <a href="#economics">Economics</a>
+    <a href="#faq">Partner FAQ</a>
+    <a href="#method">How this was built</a>
+  </nav>
+</header>
+
+<div class="wrap">
+  <div class="note"><b>Independent prototype · Synthetic data · Based on Alpaca's public documentation.</b> Internal workflows and thresholds are proposed. <a href="#method">How this was built</a></div>
+
+  <section id="v-briefing" data-view="briefing">
+    <h2>Weekly brief for the GM</h2>
+    <div class="kpis" id="kpis"></div>
+    <h2>Decisions needed this week</h2>
+    <div class="decs" id="decisions"></div>
+    <div class="grid2" style="margin-top:16px">
+      <div class="panel">
+        <h3>Risks</h3>
+        <ul class="clean" id="risks"></ul>
+      </div>
+      <div class="panel">
+        <h3>Milestones</h3>
+        <ul class="clean" id="milestones"></ul>
+        <h3 style="margin-top:14px">Next actions by owner</h3>
+        <ul class="clean" id="actions"></ul>
+      </div>
+    </div>
+  </section>
+
+  <section id="v-pipeline" data-view="pipeline" hidden>
+    <h2>Activation funnel</h2>
+    <div class="panel"><p class="muted" style="margin:0 0 10px;font-size:12.5px">Partners that have completed each stage.</p><div class="funnel" id="funnel"></div>
+      <p class="muted" style="margin:10px 0 0;font-size:12.5px">Stages follow the prerequisites in Alpaca's guide for authorized participants. &ldquo;Repeat activity&rdquo; means production conversions in at least 4 of the last 6 weeks (proposed definition).</p></div>
+    <h2>Partners</h2>
+    <div class="pcards" id="pcards"></div>
+    <div class="grid2" style="margin-top:16px">
+      <div class="panel" id="pdetail"></div>
+      <div class="panel"><h3>Readiness checklist</h3><ul class="check" id="checklist"></ul></div>
+    </div>
+  </section>
+
+  <section id="v-queue" data-view="queue" hidden>
+    <h2>Conversion queue</h2>
+    <div class="filters">
+      <label class="f" for="fStatus">Status<select id="fStatus"><option value="">All</option><option>pending</option><option>rejected</option><option>completed</option></select></label>
+      <label class="f" for="fPartner">Partner<select id="fPartner"><option value="">All</option></select></label>
+      <label class="f" for="fAge">Age<select id="fAge"><option value="">Any</option><option value="4">Over 4 hours</option><option value="24">Over 24 hours</option></select></label>
+      <span class="muted" id="qcount" style="font-size:12.5px;align-self:flex-end"></span>
+    </div>
+    <div class="grid2">
+      <div class="tablewrap"><table><thead><tr><th>Request</th><th>Partner</th><th>Type</th><th>Asset</th><th>Network</th><th>Status</th><th>Open for / resolved in</th></tr></thead><tbody id="qbody"></tbody></table></div>
+      <div class="panel" id="qdetail"></div>
+    </div>
+  </section>
+
+  <section id="v-economics" data-view="economics" hidden>
+    <h2>Where should the next integration effort go?</h2>
+    <p class="muted" style="max-width:72ch">Alpaca publishes no rate card for the tokenization network, so the fee is a hypothetical input. Partners that aren't live earn nothing until launch and then ramp up to their expected volume. Months are counted from Nov 23, and a partner earns nothing in its launch month, so Northwind's Dec 15 target falls in month 1 and its revenue starts in month 2 (a conservative assumption). The result is a <b>modeled contribution</b>: it covers assumed fees, support and remaining integration effort only, not infrastructure, legal or issuer costs.</p>
+    <div class="panel">
+      <div class="calc">
+        <label class="f" for="feeBps">Assumed fee (basis points of converted value)<input type="number" id="feeBps" min="0" step="0.5" value="10"></label>
+        <label class="f" for="hrCost">Cost per support or integration hour ($)<input type="number" id="hrCost" min="0" step="10" value="120"></label>
+        <label class="f" for="horizon">Horizon (months)<input type="number" id="horizon" min="1" max="36" step="1" value="12"></label>
+      </div>
+      <div class="tablewrap"><table><thead><tr><th>Partner</th><th>Expected monthly conversions at full volume</th><th>Months to launch</th><th>Ramp (months)</th><th>Integration hours left</th><th>Support hours / month</th><th>Modeled contribution over horizon</th><th>Breakeven</th></tr></thead><tbody id="ebody"></tbody></table></div>
+      <div class="callout" id="eRec"></div>
+    </div>
+  </section>
+
+  <section id="v-faq" data-view="faq" hidden>
+    <h2>Partner FAQ: before your first conversion</h2>
+    <p class="muted" style="max-width:72ch">Draft client-facing copy written from Alpaca's public guides. It would need review by Product, Legal and Compliance before use.</p>
+    <div class="faq">
+      <details open><summary>What do we need in place before our first mint?</summary>
+        <ol>
+          <li>Sign up as an authorized participant with each token issuer you plan to use.</li>
+          <li>Integrate with Alpaca's Broker API or Trading API, and hold the underlying shares in an account in your name.</li>
+          <li>Send Alpaca's integration team the email you used for the issuer sign-up and your Alpaca account number. Alpaca then links your two accounts with the issuer.</li>
+          <li>Register your receiving wallet with the issuer. Some issuers also require the address to be whitelisted.</li>
+          <li>Confirm the issuer offers your token on the network you want.</li>
+        </ol></details>
+      <details><summary>What does &ldquo;pending&rdquo; mean?</summary><p>Your request was accepted and is moving through the steps between Alpaca and the issuer: checks, moving the underlying shares, delivering tokens and confirming. It becomes <code>completed</code> when the issuer confirms the tokens were delivered, or <code>rejected</code> if a check fails.</p></details>
+      <details><summary>Why was our mint rejected?</summary><p>The most common reasons in the public guides: not enough of the underlying stock in your account, an account not yet authorized for tokenization, a wallet not registered to you with the issuer, a token not offered on the requested network, or a quantity with more than 9 decimal places.</p></details>
+      <details><summary>Can we retry a mint request without creating a duplicate?</summary><p>For mint requests, Alpaca's guide for authorized participants documents an optional <code>Idempotency-Key</code> header. Repeating the same key with the same request returns the original response instead of creating a second mint. Reusing a key with a different request is refused, and replaying a request that was originally rejected returns an error. Confirm retry behavior for other endpoints with Alpaca before relying on it.</p></details>
+      <details><summary>Why is a tiny token balance left after we redeem?</summary><p>Alpaca handles quantities to 9 decimal places, and issuers typically round redemptions down to that precision. Tokens with more decimals, such as 18-decimal tokens on Ethereum, can leave a very small amount unconverted.</p></details>
+      <details><summary>How do we track a request?</summary><p>List your requests, or look one up by Alpaca's request ID or by your own <code>client_request_id</code>. Each record shows its status, transaction hash, fees and timestamps.</p></details>
+      <details><summary>Does a token give us shares?</summary><p>It depends on the product. Alpaca's site notes that third-party tokenized assets give economic exposure, not direct equity ownership or voting rights, while DTCC tokenized entitlements are described as keeping the rights of the traditional security. Check each issuer's terms.</p></details>
+    </div>
+  </section>
+
+  <section id="v-method" data-view="method" hidden>
+    <h2>How this was built</h2>
+    <div class="grid2">
+      <div class="panel">
+        <h3>The question it answers</h3>
+        <p style="margin-top:0">Which partner should we prioritize, what stops it from becoming operational, and how will we know a launch is commercially successful?</p>
+        <h3>Taken from public sources</h3>
+        <ul class="clean">
+          <li>Prerequisites, mint and redeem steps, request fields and the three request statuses, from Alpaca's tokenization guides for authorized participants and issuers.</li>
+          <li>Rejection reasons, idempotent retries and the 9-decimal precision rule, from the same guides.</li>
+          <li>Network names used in the data appear in the guide's list of supported networks.</li>
+        </ul>
+        <h3 style="margin-top:12px">Proposed, not public</h3>
+        <ul class="clean">
+          <li>Stage-level detail inside a pending request, owners, time targets (4 hours to flag, 24 hours to escalate) and the definition of repeat activity.</li>
+          <li>All partners, requests, volumes and the fee. Issuers are fictional (Issuer Alpha, Issuer Beta).</li>
+          <li>Event trails on requests are simulated evidence. The public API exposes a request's status, transaction hash, fees and timestamps, not each internal step.</li>
+          <li>The weekly brief is a read-only scenario: KPIs are calculated from the sample records, while decisions, risks and actions were written for this scenario.</li>
+        </ul>
+        <h3 style="margin-top:12px">What the public API does provide</h3>
+        <ul class="clean">
+          <li>Request fields: <code>tokenization_request_id</code>, type (mint or redeem), status, underlying and token symbols, quantity, issuer, network, wallet, <code>tx_hash</code>, fees, <code>created_at</code>, <code>updated_at</code>.</li>
+          <li>Statuses: <code>pending</code>, <code>completed</code>, <code>rejected</code>.</li>
+        </ul>
+      </div>
+      <div class="panel">
+        <h3>Questions I would validate with the team</h3>
+        <ul class="clean">
+          <li>Where do partners lose visibility during onboarding today?</li>
+          <li>Who tells the partner what is happening when a request is waiting on the issuer?</li>
+          <li>What evidence is needed to close an exception: transaction hash, issuer confirmation, transfer record?</li>
+          <li>Which unresolved dependencies most often delay a partner's first production conversion?</li>
+          <li>Which partner-level metrics does the GM already review, and which decisions do they inform?</li>
+        </ul>
+        <h3 style="margin-top:12px">Sources</h3>
+        <ul class="clean">
+          <li><a href="https://docs.alpaca.markets/us/docs/tokenization-guide-for-authorized-participant">Tokenization guide for authorized participants</a></li>
+          <li><a href="https://docs.alpaca.markets/us/docs/tokenization-guide-for-issuer">Tokenization guide for issuers</a></li>
+          <li><a href="https://alpaca.markets/tokenization">Alpaca tokenization page</a></li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <footer>Prototype for a job application. Not affiliated with or endorsed by Alpaca.</footer>
+</div>
+
+<script>
+(function(){
+const NOW = new Date("2026-11-23T15:00:00Z");
+const STAGES = ["Qualified","Issuer AP sign-up","Alpaca API integration","Accounts linked","Wallet registered","Test conversion","First production conversion","Repeat activity"];
+const fmt$ = v => "$" + (Math.abs(v)>=1e6 ? (v/1e6).toFixed(1)+"M" : Math.round(v/1000)+"K");
+const fmtFull$ = v => (v<0?"−$":"$") + Math.abs(Math.round(v)).toLocaleString("en-US");
+const hrsSince = iso => (NOW - new Date(iso))/36e5;
+const between = (a,b) => (new Date(b) - new Date(a))/36e5;
+const dur = h => h<1 ? Math.round(h*60)+" min" : h<48 ? h.toFixed(1)+" h" : Math.round(h/24)+" d";
+const hm = iso => iso.slice(5,10).replace("-","/")+" "+iso.slice(11,16);
+const esc = s => String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+
+const partners = [
+ {id:"A",name:"Northwind Exchange",kind:"Crypto exchange · LatAm",stage:3,blocked:true,issuer:"Issuer Alpha",
+  monthly:4.0e6,launch:1,ramp:3,intHours:60,supHours:14,milestone:"Launch target Dec 15",
+  unresolved:"Account linking with Issuer Alpha has not completed.",
+  confirmed:"The issuer's connect step returned “email not found” (404) on Nov 17 and Nov 20.",
+  suspected:"The email sent to Alpaca differs from the one used for the issuer sign-up. Not yet confirmed by the partner.",
+  owner:"Partner ops lead (confirm the sign-up email), then Alpaca integration re-runs the handshake",
+  since:"2026-11-17T14:00:00Z",affects:"Yes. Every later stage depends on linked accounts; the Dec 15 launch slips if this isn't fixed by Nov 27.",
+  escalate:"Ask the partner to confirm the sign-up email and commit to an update by Nov 25. If there's no answer in 48 hours, raise it with the partner's executive sponsor.",
+  checklist:[["Commercial terms agreed","Business development","done"],["AP sign-up with Issuer Alpha","Partner","done"],["Broker API integration","Partner + Alpaca integration","done"],["Accounts linked (handshake)","Partner + Alpaca integration","blocked"],["Wallet registered and whitelisted","Partner + issuer","open"],["Compliance review of client materials","Legal & Compliance","open"]]},
+ {id:"B",name:"Harbor Wallet",kind:"Self-custody wallet · Europe",stage:5,blocked:true,issuer:"Issuer Beta",
+  monthly:1.5e6,launch:1,ramp:2,intHours:20,supHours:8,milestone:"Launch target Dec 8",
+  unresolved:"6 of 20 planned asset and network pairs (all on the mantle network) aren't confirmed by Issuer Beta.",
+  confirmed:"A test mint of AAPL on mantle was rejected on Nov 19: token not available on the requested network. The same asset on solana completed on Nov 21.",
+  suspected:"Issuer Beta may not support mantle for these symbols yet. Needs written confirmation.",
+  owner:"Product (get Issuer Beta's supported pairs in writing)",
+  since:"2026-11-19T10:00:00Z",affects:"Partly. Launch can go ahead on the 14 supported pairs; 6 would be held back.",
+  escalate:"Decide this week whether to launch on the 14 supported pairs (see Weekly brief).",
+  checklist:[["Commercial terms agreed","Business development","done"],["AP sign-up with Issuer Beta","Partner","done"],["Trading API integration","Partner","done"],["Accounts linked (handshake)","Alpaca integration","done"],["Wallets registered","Partner + issuer","done"],["Asset and network pairs confirmed","Product + issuer","blocked"],["Test mint and redeem","Partner","open"]]},
+ {id:"C",name:"Kestrel Markets",kind:"Market maker · Global",stage:7,blocked:false,issuer:"Issuer Alpha",
+  monthly:9.0e6,launch:0,ramp:0,intHours:0,supHours:22,milestone:"Live since Nov 2",
+  unresolved:"3 mint requests are pending, the oldest for over 20 hours.",
+  confirmed:"In each simulated event trail, the underlying transfer to the issuer is confirmed and the issuer's mint callback with a transaction hash is outstanding.",
+  suspected:"A delivery backlog at Issuer Alpha. Not confirmed; ask the issuer.",
+  owner:"Issuer Alpha (deliver tokens and send the mint callback)",
+  since:"2026-11-22T18:40:00Z",affects:"Not a launch milestone, but it delays the partner's inventory rebalancing.",
+  escalate:"Ask Issuer Alpha's ops contact for status and an expected delivery time, and tell the partner when they'll get the next update. Escalate to the issuer relationship owner if any request passes 24 hours or the issuer doesn't respond.",
+  checklist:[["Commercial terms agreed","Business development","done"],["AP sign-up with Issuer Alpha","Partner","done"],["Broker API integration","Partner","done"],["Accounts linked","Alpaca integration","done"],["Wallet registered","Partner + issuer","done"],["Test conversion","Partner","done"],["First production conversion","Partner","done"],["4 of 6 weeks active","Partner","open"]]},
+ {id:"D",name:"Lumen Brokerage",kind:"Retail broker · Asia",stage:1,blocked:false,issuer:"Issuer Beta",
+  monthly:2.5e6,launch:4,ramp:3,intHours:90,supHours:12,milestone:"Integration kickoff Dec 2",
+  unresolved:"Signing up as an authorized participant with Issuer Beta.",confirmed:"Sign-up submitted Nov 20 (partner email).",suspected:"None.",
+  owner:"Partner",since:"2026-11-20T09:00:00Z",affects:"Not yet; kickoff is Dec 2.",escalate:"None needed. Check in at kickoff.",
+  checklist:[["Commercial terms agreed","Business development","done"],["AP sign-up with Issuer Beta","Partner","open"],["API integration plan","Partner + Alpaca integration","open"]]},
+ {id:"E",name:"Orbit Pay",kind:"Payments app · Middle East",stage:8,blocked:false,issuer:"Issuer Alpha",
+  monthly:3.2e6,launch:0,ramp:0,intHours:0,supHours:6,milestone:"Live since Aug; 6 of 6 weeks active",
+  unresolved:"Nothing open.",confirmed:"—",suspected:"—",owner:"—",since:null,affects:"No.",escalate:"None. Candidate case study for sales materials.",
+  checklist:[["All activation steps","—","done"],["4 of 6 weeks active","Partner","done"]]}
+];
+const P = Object.fromEntries(partners.map(p=>[p.id,p]));
+
+// Requests: [id, partner, type, symbol, qty shown, network, status, created, resolved, nextOwner, events]
+// events: [time, text, kind] kind: "" done, "out" outstanding, "bad" failed
+const ev = (c, extra) => [[c,"Request accepted by Alpaca (status: pending)",""],[c,"Alpaca checked authorization and underlying position",""]].concat(extra);
+const reqs = [
+ ["7f3a91c2","C","mint","NVDA","1200","solana","pending","2026-11-22T18:40:00Z",null,"Issuer Alpha",ev("2026-11-22T18:40:00Z",[["2026-11-22T18:41:00Z","Issuer validated wallet and token; issuer request ID returned",""],["2026-11-22T18:44:00Z","Underlying shares transferred to issuer's Alpaca account; confirmation sent",""],[null,"Issuer mint callback with transaction hash","out"]])],
+ ["7f3a9d10","C","mint","AAPL","850","solana","pending","2026-11-23T08:05:00Z",null,"Issuer Alpha",ev("2026-11-23T08:05:00Z",[["2026-11-23T08:06:00Z","Issuer validated wallet and token",""],["2026-11-23T08:09:00Z","Underlying shares transferred; confirmation sent",""],[null,"Issuer mint callback with transaction hash","out"]])],
+ ["7f3aa4e8","C","mint","SPY","400","base","pending","2026-11-23T12:30:00Z",null,"Issuer Alpha",ev("2026-11-23T12:30:00Z",[["2026-11-23T12:31:00Z","Issuer validated wallet and token",""],["2026-11-23T12:33:00Z","Underlying shares transferred; confirmation sent",""],[null,"Issuer mint callback with transaction hash","out"]])],
+ ["8a21d9b1","E","mint","AMZN","140","base","pending","2026-11-23T14:41:00Z",null,"Issuer Alpha",ev("2026-11-23T14:41:00Z",[[null,"Issuer validation of wallet and token","out"]])],
+ ["7f3ab2c4","C","redeem","TSLA","300","solana","completed","2026-11-23T09:12:00Z","2026-11-23T09:31:00Z","—",[["2026-11-23T09:12:00Z","Issuer reported redemption (tokens removed from circulation)",""],["2026-11-23T09:31:00Z","Underlying shares transferred to partner's account (status: completed)",""]]],
+ ["8a21c7d3","E","mint","QQQ","220","base","completed","2026-11-23T11:47:00Z","2026-11-23T12:20:00Z","—",ev("2026-11-23T11:47:00Z",[["2026-11-23T11:48:00Z","Issuer validated wallet and token",""],["2026-11-23T11:50:00Z","Underlying transferred; confirmation sent",""],["2026-11-23T12:20:00Z","Issuer mint callback received with transaction hash (status: completed)",""]])],
+ ["8a21d05e","E","redeem","NVDA","75","base","completed","2026-11-23T13:02:00Z","2026-11-23T13:15:00Z","—",[["2026-11-23T13:02:00Z","Issuer reported redemption",""],["2026-11-23T13:15:00Z","Underlying shares transferred to partner (status: completed)",""]]],
+ ["9c40e7aa","B","mint","AAPL","10","solana","completed","2026-11-21T15:30:00Z","2026-11-21T16:02:00Z","—",ev("2026-11-21T15:30:00Z",[["2026-11-21T15:31:00Z","Issuer validated wallet and token",""],["2026-11-21T15:33:00Z","Underlying transferred; confirmation sent",""],["2026-11-21T16:02:00Z","Issuer mint callback received (status: completed)",""]])],
+ ["7f3ab90a","C","mint","MSFT","500.1234567891","ethereum","rejected","2026-11-22T16:20:00Z","2026-11-22T16:20:00Z","Partner",[["2026-11-22T16:20:00Z","Rejected at submission: quantity has 10 decimal places; the limit is 9","bad"]]],
+ ["9c40e1f6","B","mint","AAPL","10","mantle","rejected","2026-11-19T10:00:00Z","2026-11-19T10:01:00Z","Product + issuer",ev("2026-11-19T10:00:00Z",[["2026-11-19T10:01:00Z","Issuer rejected: token not available on the requested network","bad"]])],
+ ["8a21e344","E","mint","GOOGL","60","base","rejected","2026-11-23T10:20:00Z","2026-11-23T10:20:00Z","Partner",[["2026-11-23T10:20:00Z","Rejected by Alpaca: insufficient underlying position in partner's account","bad"]]]
+].map(r=>({id:r[0],p:r[1],type:r[2],sym:r[3],qty:r[4],net:r[5],status:r[6],created:r[7],resolved:r[8],owner:r[9],events:r[10],
+  open: r[6]==="pending" ? hrsSince(r[7]) : null, took: r[8] ? between(r[7],r[8]) : null}));
+
+document.getElementById("asof").textContent = "Simulated as of Mon Nov 23, 2026 · 10:00 ET";
+
+// ---------- Brief
+function brief(){
+  const linkedPlus = partners.filter(p=>p.stage>3).length;
+  const firstConv = partners.filter(p=>p.stage>=7).length;
+  const repeat = partners.filter(p=>p.stage>=8).length;
+  const pend = reqs.filter(r=>r.status==="pending");
+  const pend4 = pend.filter(r=>r.open>4).length, pend24 = pend.filter(r=>r.open>24).length;
+  const decided = reqs.filter(r=>r.status!=="pending");
+  const rej = decided.filter(r=>r.status==="rejected").length;
+  const live = partners.filter(p=>p.stage>=7);
+  const totalLive = live.reduce((a,p)=>a+p.monthly,0);
+  const topP = live.reduce((a,p)=>p.monthly>a.monthly?p:a);
+  const top = topP.monthly/totalLive;
+  const k = [
+    [partners.length,"Partners in pipeline",`${linkedPlus} past account linking`],
+    [`${firstConv} of ${partners.length}`,"Reached first production conversion",`${repeat} with repeat activity`],
+    [pend.length,"Requests pending",`${pend4} over 4 h · ${pend24} over 24 h`,pend24?"crit":pend4?"warn":"ok"],
+    [Math.round(rej/decided.length*100)+"%","Rejected (of decided requests)",`${rej} of ${decided.length} in this sample`],
+    [Math.round(top*100)+"%","Forecast volume concentration",`Share of expected live volume from ${esc(topP.name)}`]
+  ];
+  document.getElementById("kpis").innerHTML = k.map(([v,l,d,s])=>`<div class="kpi"><div class="v">${v}${s?` <span class="pill p-${s}" style="vertical-align:middle">${s==="crit"?"Escalate":s==="warn"?"Watch":"OK"}</span>`:""}</div><div class="l">${l}</div><div class="d">${d}</div></div>`).join("");
+  const decs = [
+    {q:"Harbor Wallet: launch on the supported pairs now, or wait for mantle?",
+     rec:"Launch with the 14 supported pairs; track the remaining 6 separately, subject to required approvals.",
+     why:"Waiting delays all 20 pairs for 6 that need an issuer change with no confirmed date.",
+     owner:"GM (decision) · Product (issuer confirmation)",due:"Decide by Wed, Nov 25 to hold the Dec 8 launch",link:`<a href="#pipeline" data-open="B">See partner</a>`},
+    {q:"Kestrel Markets: how should we handle slow mint confirmations from Issuer Alpha?",
+     rec:"Agree a target time for mint callbacks and a named status contact with Issuer Alpha; report requests over 4 hours weekly.",
+     why:"The transfer step is confirmed in each trail; the outstanding step is the issuer's callback. The oldest request is past 20 hours.",
+     owner:"Issuer relationship owner",due:"Agreement by Fri, Nov 27",link:`<a href="#queue" data-open-req="7f3a91c2">See request</a>`}
+  ];
+  document.getElementById("decisions").innerHTML = decs.map(d=>`<div class="dec"><div class="qn">${esc(d.q)}</div><div class="rec"><b>Recommendation:</b> ${esc(d.rec)}</div><div class="muted" style="font-size:13px;margin-top:3px">${esc(d.why)}</div><div class="meta"><span><b>Owner:</b> ${esc(d.owner)}</span><span><b>Deadline:</b> ${esc(d.due)}</span><span>${d.link}</span></div></div>`).join("");
+  document.getElementById("risks").innerHTML = [
+    `Northwind Exchange's Dec 15 launch slips unless account linking is fixed by Nov 27.`,
+    `${esc(topP.name)} is ${Math.round(top*100)}% of expected live volume. One partner's issue moves the department's numbers.`,
+    `Two of three recent rejections were partner input errors (quantity precision, insufficient position). A pre-flight checklist in the partner FAQ could prevent them.`
+  ].map(x=>`<li>${x}</li>`).join("");
+  document.getElementById("milestones").innerHTML = [
+    `<span class="pill p-n">Dec 2</span> Lumen Brokerage integration kickoff`,
+    `<span class="pill p-warn">Dec 8</span> Harbor Wallet launch (decision needed)`,
+    `<span class="pill p-crit">Dec 15</span> Northwind Exchange launch (at risk)`,
+    `<span class="pill p-ok">Done</span> Orbit Pay reached 6 of 6 active weeks`
+  ].map(x=>`<li>${x}</li>`).join("");
+  document.getElementById("actions").innerHTML = [
+    `<b>Partner ops (Northwind):</b> confirm issuer sign-up email.`,
+    `<b>Alpaca integration:</b> re-run Northwind handshake once confirmed.`,
+    `<b>Product:</b> get Issuer Beta's supported pairs for mantle in writing.`,
+    `<b>Issuer relationship owner:</b> get status on 3 pending Kestrel mints.`,
+    `<b>Sales enablement:</b> turn Orbit Pay into a case study.`
+  ].map(x=>`<li>${x}</li>`).join("");
+}
+
+// ---------- Pipeline
+let selP = "C";
+function stageBar(p){return `<div class="stagebar" aria-hidden="true">${STAGES.map((s,i)=>`<i class="${i===p.stage&&p.blocked?"blk":i<p.stage?"on":""}"></i>`).join("")}</div>`}
+function pipeline(){
+  const counts = STAGES.map((s,i)=>partners.filter(p=>p.stage>i).length);
+  document.getElementById("funnel").innerHTML = STAGES.map((s,i)=>`<div class="fstep"><span>${s}</span><div class="fbar"><span style="width:${counts[i]/partners.length*100}%"></span></div><span class="n">${counts[i]}</span></div>`).join("");
+  document.getElementById("pcards").innerHTML = partners.map(p=>{
+    const st = p.blocked?`<span class="pill p-crit">Blocked</span>`:p.stage>=8?`<span class="pill p-ok">Active</span>`:p.stage>=7?`<span class="pill p-warn">Live · watch</span>`:`<span class="pill p-n">On track</span>`;
+    return `<button class="pcard" data-p="${p.id}" aria-pressed="${p.id===selP}"><div style="display:flex;justify-content:space-between;gap:8px"><span class="t">${esc(p.name)}</span>${st}</div><div class="s">${esc(p.kind)}</div>${stageBar(p)}<div class="s">${p.stage>=8?"All stages complete":(p.blocked?"Blocked at: ":"Now: ")+STAGES[p.stage]}</div></button>`}).join("");
+  const p = P[selP];
+  document.getElementById("pdetail").innerHTML = `<h3>${esc(p.name)} · ${esc(p.milestone)}</h3>
+    <ol class="five">
+      <li><span class="q">What is unresolved</span><span>${esc(p.unresolved)}</span></li>
+      <li><span class="q">Confirmed <span class="tag">simulated evidence</span></span><span>${esc(p.confirmed)}</span></li>
+      <li><span class="q">Suspected cause</span><span>${esc(p.suspected)}</span></li>
+      <li><span class="q">Who owns the next action</span><span>${esc(p.owner)}</span></li>
+      <li><span class="q">Open for</span><span class="mono">${p.since?dur(hrsSince(p.since)):"—"}</span></li>
+      <li><span class="q">Affects a launch milestone?</span><span>${esc(p.affects)}</span></li>
+      <li><span class="q">Recommended next step</span><span>${esc(p.escalate)}</span></li>
+    </ol>`;
+  document.getElementById("checklist").innerHTML = p.checklist.map(([t,o,s])=>`<li><span class="dot ${s}" aria-hidden="true"></span><span>${esc(t)}<span class="sr"> (${s})</span></span><span class="owner">${esc(o)}</span></li>`).join("");
+  document.querySelectorAll(".pcard").forEach(b=>b.onclick=()=>{selP=b.dataset.p;pipeline()});
+}
+
+// ---------- Queue
+let selR = "7f3a91c2";
+const fPartner = document.getElementById("fPartner");
+partners.forEach(p=>fPartner.insertAdjacentHTML("beforeend",`<option value="${p.id}">${esc(p.name)}</option>`));
+function statusPill(r){
+  if(r.status==="completed") return `<span class="pill p-ok">completed</span>`;
+  if(r.status==="rejected") return `<span class="pill p-crit">rejected</span>`;
+  return `<span class="pill ${r.open>24?"p-crit":r.open>4?"p-warn":"p-n"}">pending</span>`;
+}
+const timeCell = r => r.status==="pending" ? `open ${dur(r.open)}` : `in ${dur(r.took)}`;
+function queue(){
+  const fs=document.getElementById("fStatus").value, fp=fPartner.value, fa=+document.getElementById("fAge").value||0;
+  const rows = reqs.filter(r=>(!fs||r.status===fs)&&(!fp||r.p===fp)&&(!fa||(r.status==="pending"&&r.open>fa)))
+    .sort((a,b)=>(a.status==="pending"?0:1)-(b.status==="pending"?0:1)||(b.open??0)-(a.open??0)||new Date(b.created)-new Date(a.created));
+  document.getElementById("qcount").textContent = `${rows.length} of ${reqs.length} requests`;
+  if(!rows.some(r=>r.id===selR)) selR = rows[0] ? rows[0].id : null;
+  document.getElementById("qbody").innerHTML = rows.map(r=>`<tr class="row" tabindex="0" data-r="${r.id}" aria-selected="${r.id===selR}"><td class="mono">${r.id}</td><td>${esc(P[r.p].name)}</td><td>${r.type}</td><td class="mono">${r.sym} × ${r.qty}</td><td class="mono">${r.net}</td><td>${statusPill(r)}</td><td class="mono">${timeCell(r)}</td></tr>`).join("") || `<tr><td colspan="7" class="muted">No requests match these filters.</td></tr>`;
+  const det = document.getElementById("qdetail");
+  if(!selR){det.innerHTML=`<p class="muted" style="margin:0">No request selected. Change the filters to see requests.</p>`;return}
+  const r = reqs.find(x=>x.id===selR), p = P[r.p];
+  let rec;
+  if(r.status==="pending"){
+    rec = r.open>24 ? `Escalate to ${p.issuer}'s relationship owner. Tell ${p.name} what is known and when they'll get the next update.`
+        : r.open>4 ? `Ask ${p.issuer}'s ops contact for status and an expected time. Tell ${p.name} when they'll get the next update; don't promise a delivery time until the issuer confirms one.`
+        : `No action yet. Within the proposed 4-hour target.`;
+  } else if(r.status==="rejected") rec = `Share the reason with ${p.name} and point to the matching partner FAQ answer. If it repeats, add a check to onboarding.`;
+  else rec = `None.`;
+  const timeRows = r.status==="pending"
+    ? `<li><span class="q">Open for</span><span class="mono">${dur(r.open)} (created ${dur(hrsSince(r.created))} ago)</span></li>`
+    : `<li><span class="q">Created</span><span class="mono">${dur(hrsSince(r.created))} ago</span></li><li><span class="q">Time to ${r.status==="completed"?"complete":"reject"}</span><span class="mono">${dur(r.took)}</span></li>`;
+  det.innerHTML = `<h3>Request <span class="mono">${r.id}</span></h3>
+   <ol class="five">
+     <li><span class="q">Partner · issuer</span><span>${esc(p.name)} · ${esc(p.issuer)}</span></li>
+     <li><span class="q">Request</span><span class="mono">${r.type} ${r.sym} × ${r.qty} on ${r.net}</span></li>
+     <li><span class="q">Public status</span><span>${statusPill(r)}</span></li>
+     ${timeRows}
+     <li><span class="q">Next action owner</span><span>${esc(r.owner)}</span></li>
+     <li><span class="q">Recommended action</span><span>${esc(rec)}</span></li>
+   </ol>
+   <div class="tag" style="margin-top:10px">Event trail · simulated evidence (UTC)</div>
+   <ul class="trail">${r.events.map(([t,txt,k])=>`<li class="${k}"><span class="ts">${t?hm(t):"waiting"}</span>${esc(txt)}</li>`).join("")}</ul>`;
+  document.querySelectorAll("#qbody .row").forEach(tr=>{
+    const go=()=>{selR=tr.dataset.r;queue()};
+    tr.onclick=go; tr.onkeydown=e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();go()}};
+  });
+}
+["fStatus","fPartner","fAge"].forEach(id=>document.getElementById(id).onchange=queue);
+
+// ---------- Economics
+function model(p,bps,hc,H){
+  let cum = -p.intHours*hc, breakeven = cum>=0 ? 0 : null;
+  for(let m=1;m<=H;m++){
+    const after = m - p.launch;
+    const frac = after<=0 ? 0 : p.ramp===0 ? 1 : Math.min(1, after/p.ramp);
+    if(frac>0) cum += p.monthly*frac*bps/1e4 - p.supHours*hc;
+    if(breakeven===null && cum>=0) breakeven = m;
+  }
+  return {net:cum,breakeven};
+}
+function econ(){
+  const bps=Math.max(0,+document.getElementById("feeBps").value||0), hc=Math.max(0,+document.getElementById("hrCost").value||0), H=Math.min(36,Math.max(1,+document.getElementById("horizon").value||12));
+  const rows = partners.map(p=>({p,...model(p,bps,hc,H)})).sort((a,b)=>b.net-a.net);
+  document.getElementById("ebody").innerHTML = rows.map(x=>`<tr><td>${esc(x.p.name)}${x.p.stage>=7?' <span class="pill p-ok">live</span>':''}</td><td class="mono">${fmtFull$(x.p.monthly)}</td><td class="mono">${x.p.launch}</td><td class="mono">${x.p.ramp}</td><td class="mono">${x.p.intHours}</td><td class="mono">${x.p.supHours}</td><td class="mono" style="color:${x.net<0?"var(--crit)":"inherit"}">${fmtFull$(x.net)}</td><td class="mono">${x.breakeven===null?`not within ${H} mo`:x.breakeven===0?"No remaining setup cost":"month "+x.breakeven}</td></tr>`).join("");
+  const best = rows.filter(x=>x.p.stage<7)[0];
+  document.getElementById("eRec").innerHTML = !best ? "" : best.net<0
+    ? `<b>At these assumptions, no partner that isn't live yet breaks even within ${H} months.</b> That argues for cutting integration effort or revisiting pricing before adding partners.`
+    : `<b>Of the partners not yet live, ${esc(best.p.name)} has the highest modeled contribution over ${H} months</b> (${fmtFull$(best.net)}), after its launch delay and ramp. Change the fee, hourly cost or horizon to see whether the ranking holds. If it flips under small changes, get better volume and launch-date estimates before committing team time.`;
+}
+["feeBps","hrCost","horizon"].forEach(id=>document.getElementById(id).oninput=econ);
+
+// ---------- Routing
+const VIEWS=["briefing","pipeline","queue","economics","faq","method"];
+function route(){
+  const v = VIEWS.includes(location.hash.slice(1)) ? location.hash.slice(1) : "briefing";
+  document.querySelectorAll("[data-view]").forEach(s=>s.hidden = s.dataset.view!==v);
+  document.querySelectorAll("nav a").forEach(a=>a.setAttribute("aria-current", a.getAttribute("href")==="#"+v ? "page" : "false"));
+}
+document.addEventListener("click",e=>{
+  const a=e.target.closest("a[data-open]"); if(a){selP=a.dataset.open;pipeline()}
+  const b=e.target.closest("a[data-open-req]"); if(b){
+    selR=b.dataset.openReq; ["fStatus","fPartner","fAge"].forEach(id=>document.getElementById(id).value=""); queue()}
+});
+window.addEventListener("hashchange",route);
+brief(); pipeline(); queue(); econ(); route();
+})();
+</script>
+
+</body>
+</html>
